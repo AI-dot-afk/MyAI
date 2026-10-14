@@ -1,0 +1,12 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // A user may access only their own chat history and private settings.
+    match /users/{uid}/chats/{chatId} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+    match /users/{uid}/private/settings {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+  }
+}

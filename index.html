@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MyAI</title>
+  <link rel="icon" type="image/svg+xml" href="assets/logo.svg" />
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/github-dark.min.css" />
+  <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.min.mjs" type="module"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/highlight.min.js"></script>
+  <script type="module" src="js/app.js?v=20261014-myai-3-0"></script>
+</head>
+<body>
+  <section id="landing" class="landing">
+    <button id="landingTheme" class="theme-toggle" type="button" aria-label="Ganti tema">☀️ / 🌙</button>
+    <div class="landing-card">
+      <img src="assets/myai-logo.png" alt="Logo My AI" class="landing-logo" />
+      <p class="eyebrow">ASISTEN AI PRIBADI</p>
+      <h1>Semua AI favoritmu,<br><span>dalam satu tempat.</span></h1>
+      <p class="landing-copy">Ngobrol, belajar, menulis, dan membuat kode dengan model AI pilihanmu. Masuk untuk menyinkronkan riwayat dan pengaturan.</p>
+      <div class="landing-actions">
+        <button id="landingLogin" class="btn primary" type="button">Masuk dengan Google</button>
+        <button id="landingGuest" class="btn ghost" type="button">Lanjut sebagai tamu</button>
+      </div>
+      <p class="landing-note">OpenRouter, AI/ML API, LLM7, dan model lokal siap digunakan.</p>
+    </div>
+  </section>
+  <dialog id="loginDialog" class="login-dialog">
+    <button id="closeLogin" class="dialog-close" type="button" aria-label="Tutup">×</button>
+    <img src="assets/myai-logo.png" alt="Logo My AI" class="login-logo" />
+    <h2>Selamat datang di MyAI</h2>
+    <p class="muted">Masuk dengan akun Google untuk menyimpan chat dan menyinkronkan pengaturan melalui Firebase.</p>
+    <button id="loginGoogle" class="btn primary block" type="button">Lanjutkan dengan Google</button>
+    <button id="loginGuest" class="btn ghost block" type="button">Gunakan tanpa login</button>
+    <p id="loginError" class="login-error hidden"></p>
+  </dialog>
+  <dialog id="settingsDialog">
+    <button id="closeSettings" class="dialog-close" type="button" aria-label="Tutup">×</button>
+    <h2>Pengaturan</h2>
+    <p id="syncNote" class="muted"></p>
+    <p class="muted">OpenRouter, AI/ML API, dan LLM7 sudah terhubung otomatis melalui server MyAI. Tidak perlu memasukkan API key.</p>
+    <form id="settingsForm">
+      <label class="check"><input name="showPaid" type="checkbox" /> Tampilkan model berbayar OpenRouter</label>
+      <label class="check"><input name="localModels" type="checkbox" /> Aktifkan model lokal browser (mengunduh katalog/model)</label>
+      <label>System prompt
+        <textarea name="systemPrompt" rows="4"></textarea>
+      </label>
+      <label>Suhu: <span id="tempValue"></span>
+        <input name="temperature" type="range" min="0" max="2" step="0.1" />
+      </label>
+      <div class="dialog-actions">
+        <button class="btn ghost" type="button" id="cancelSettings">Batal</button>
+        <button class="btn primary" type="submit">Simpan</button>
+      </div>
+    </form>
+  </dialog>
+  <div class="app">
+    <aside id="sidebar" class="sidebar">
+      <div class="brand">
+        <img src="assets/logo.svg" alt="" class="brand-logo" />
+        <span id="appName" class="brand-name">MyAI</span>
+        <span id="appVersion" class="version-badge"></span>
+      </div>
+      <nav class="sidebar-actions" aria-label="Menu utama">
+        <button id="newChat" class="sidebar-action primary" type="button"><span class="sidebar-icon" aria-hidden="true">＋</span><span>Obrolan baru</span></button>
+        <button id="searchChats" class="sidebar-action" type="button"><span class="sidebar-icon" aria-hidden="true">⌕</span><span>Cari chat</span></button>
+        <button id="openImageMode" class="sidebar-action" type="button"><span class="sidebar-icon" aria-hidden="true">▧</span><span>Gambar</span></button>
+        <button id="openFiles" class="sidebar-action" type="button"><span class="sidebar-icon" aria-hidden="true">⌁</span><span>Lampiran</span></button>
+      </nav>
+      <div class="recent-heading"><span>Terbaru</span></div>
+      <input id="chatSearch" class="chat-search hidden" type="search" placeholder="Cari riwayat…" autocomplete="off" />
+      <nav id="chatList" class="chat-list" aria-label="Riwayat chat"></nav>
+      <div class="sidebar-footer">
+        <button id="settingsBtn" class="sidebar-settings" type="button"><span aria-hidden="true">⚙</span><span>Pengaturan</span></button>
+        <div id="account" class="account"></div>
+      </div>
+    </aside>
+    <div id="backdrop" class="backdrop"></div>
+
+    <main class="main">
+      <header class="topbar">
+        <button id="toggleSidebar" class="icon-btn" type="button" aria-label="Tampilkan atau sembunyikan menu" aria-expanded="true">
+          <span class="hamburger-lines" aria-hidden="true"><i></i><i></i><i></i></span>
+        </button>
+        <button id="themeToggle" class="theme-toggle app-theme" type="button" aria-label="Ganti tema">☀️</button>
+      </header>
+
+      <div id="progress" class="progress hidden">
+        <div class="progress-bar"><div id="progressFill"></div></div>
+        <span id="progressText"></span>
+      </div>
+
+      <div class="chat-wrap empty" id="chatWrap">
+        <section id="messages" class="messages" aria-live="polite"></section>
+
+        <form id="composer" class="composer">
+          <input id="fileInput" type="file" multiple hidden />
+          <input id="folderInput" type="file" multiple webkitdirectory directory hidden />
+          <div id="attachmentProcessing" class="attachment-processing hidden" role="status" aria-live="polite">
+            <span class="ai-spinner" aria-hidden="true"></span><span id="attachmentProcessingText">Membaca file…</span>
+          </div>
+          <div id="attachmentList" class="attachment-list hidden" aria-live="polite"></div>
+          <label class="sr-only" for="input">Tulis pesan</label>
+          <textarea id="input" rows="1" placeholder="Tanyakan apa saja…"></textarea>
+        <div class="composer-bar">
+          <button id="attachBtn" type="button" class="attach-btn" aria-label="Tambah lampiran" aria-haspopup="menu" aria-expanded="false" title="Tambah lampiran">＋</button>
+          <div id="attachMenu" class="attach-menu hidden" role="menu" aria-label="Tambah lampiran">
+            <button type="button" data-action="files"><span class="attach-icon">⌁</span><span>File</span></button>
+            <button type="button" data-action="folder"><span class="attach-icon">▱</span><span>Folder</span></button>
+          </div>
+          <div id="taskModePicker" class="task-mode-picker">
+            <button id="taskModeBtn" class="task-mode-btn" type="button" aria-label="Jenis AI" aria-haspopup="menu" aria-expanded="false">
+              <span id="taskModeIcon" aria-hidden="true">✦</span>
+              <span id="taskModeLabel">Auto</span>
+              <span class="task-mode-chevron" aria-hidden="true">⌄</span>
+            </button>
+            <div id="taskModeMenu" class="task-mode-menu hidden" role="menu" aria-label="Pilih jenis AI">
+              <button type="button" role="menuitemradio" data-mode="auto" aria-checked="true"><span>✦</span><b>Auto</b></button>
+              <button type="button" role="menuitemradio" data-mode="coding" aria-checked="false"><span>{ }</span><b>Coding</b></button>
+              <button type="button" role="menuitemradio" data-mode="flash" aria-checked="false"><span>ϟ</span><b>Flash</b></button>
+              <button type="button" role="menuitemradio" data-mode="pro" aria-checked="false"><span>◇</span><b>Pro</b></button>
+              <button type="button" role="menuitemradio" data-mode="max" aria-checked="false"><span>◆</span><b>Max</b></button>
+              <button type="button" role="menuitemradio" data-mode="image" aria-checked="false"><span>▧</span><b>Gambar</b></button>
+            </div>
+          </div>
+          <span class="composer-spacer" aria-hidden="true"></span>
+          <div id="modelPicker" class="model-picker">
+            <button id="modelBtn" type="button" class="model-btn" aria-haspopup="listbox" aria-expanded="false">
+              <span id="modelBtnLogo" class="mlogo"></span>
+              <span class="model-btn-text"><span id="modelBtnName">Memuat model…</span></span>
+              <span class="chev" aria-hidden="true">▾</span>
+            </button>
+            <div id="modelMenu" class="model-menu hidden" role="listbox">
+              <input id="modelSearch" type="search" placeholder="Cari model… (qwen, claude, gemini, deepseek)" autocomplete="off" />
+              <div id="modelList" class="model-list"></div>
+              <button id="refreshModelsBtn" class="model-refresh" type="button" title="Ambil katalog model terbaru dari API provider">Muat semua model API</button>
+            </div>
+          </div>
+          <button id="sendBtn" type="submit" class="send-round primary" aria-label="Kirim" title="Kirim">↑</button>
+        </div>
+      </form>
+      <div id="modeStatus" class="mode-status hidden" aria-live="polite">
+        <span id="modeLabel"></span>
+        <button id="clearMode" type="button" aria-label="Matikan mode">×</button>
+      </div>
+      <p class="hint">MyAI bisa membuat kesalahan. Periksa kembali informasi penting.</p>
+      <div id="suggestions" class="suggestions" aria-label="Contoh pertanyaan"></div>
+      </div>
+    </main>
+  </div>
+
+  <dialog id="previewDialog" class="preview-dialog">
+    <button id="closePreview" class="dialog-close" type="button" aria-label="Tutup">×</button>
+    <h2 id="previewTitle">Pratinjau lampiran</h2>
+    <div id="previewBody" class="preview-body"></div>
+  </dialog>
+  <dialog id="sketchDialog" class="sketch-dialog">
+    <button id="closeSketch" class="dialog-close" type="button" aria-label="Tutup">×</button>
+    <h2>Buat sketsa</h2>
+    <div class="sketch-controls">
+      <label>Warna <input id="sketchColor" type="color" value="#202435" /></label>
+      <label>Ukuran <input id="sketchSize" type="range" min="2" max="36" value="6" /></label>
+      <button id="clearSketch" class="btn" type="button">Bersihkan</button>
+    </div>
+    <canvas id="sketchCanvas" width="1200" height="800" aria-label="Kanvas sketsa"></canvas>
+    <div class="dialog-actions">
+      <button id="cancelSketch" class="btn ghost" type="button">Batal</button>
+      <button id="attachSketch" class="btn primary" type="button">Lampirkan sketsa</button>
+    </div>
+  </dialog>
+  <div id="toast" class="toast hidden"></div>
+</body>
+</html>
